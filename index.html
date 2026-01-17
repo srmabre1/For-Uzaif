@@ -3,189 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Twin Quest</title>
+    <title>The Twin Story</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    
     <style>
-        :root {
-            --primary: #ff4d6d;
-            --bg: #121212;
-            --card: #1e1e1e;
-            --text: #ffffff;
+        :root { --p: #ff4d6d; --bg: #0d0d0d; }
+        body { background: var(--bg); color: white; font-family: 'Helvetica Neue', sans-serif; margin: 0; overflow: hidden; }
+        
+        #main-stage { 
+            height: 100vh; display: flex; justify-content: center; align-items: center; 
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
         }
 
-        body {
-            background-color: var(--bg);
-            color: var(--text);
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
+        #game-card {
+            width: 85%; max-width: 400px; background: rgba(255, 255, 255, 0.05);
+            padding: 30px; border-radius: 25px; border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px); text-align: center;
         }
 
-        #game-container {
-            width: 90%;
-            max-width: 450px;
-            background: var(--card);
-            padding: 25px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            text-align: center;
-            border: 1px solid #333;
+        .img-wrap {
+            width: 100%; height: 220px; border-radius: 15px; overflow: hidden;
+            margin-bottom: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.5);
         }
 
-        #image-container {
-            width: 100%;
-            height: 250px;
-            background: #2a2a2a;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+        #scene-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.8s ease; }
+        .zoom-in { transform: scale(1.1); }
 
-        #scene-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: opacity 0.5s ease;
-        }
+        #story-text { font-size: 1.1rem; min-height: 80px; margin-bottom: 25px; line-height: 1.6; }
 
-        #story-text {
-            font-size: 1.1rem;
-            line-height: 1.5;
-            margin-bottom: 25px;
-            min-height: 80px;
+        .btn {
+            display: block; width: 100%; background: var(--p); color: white;
+            border: none; padding: 15px; margin: 10px 0; border-radius: 50px;
+            font-weight: bold; cursor: pointer; font-size: 1rem;
+            box-shadow: 0 4px 15px rgba(255, 77, 109, 0.3);
+            transition: all 0.3s ease;
         }
+        .btn:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(255, 77, 109, 0.5); }
 
-        .button-stack {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+        /* Animation for screen transition */
+        .fade-out { opacity: 0; transform: translateY(20px); transition: 0.5s; }
+        .fade-in { opacity: 1; transform: translateY(0); transition: 0.5s; }
 
-        .choice-btn {
-            background: transparent;
-            color: var(--primary);
-            border: 2px solid var(--primary);
-            padding: 14px;
-            font-size: 1rem;
-            font-weight: bold;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            outline: none;
-        }
-
-        .choice-btn:hover {
-            background: var(--primary);
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        /* Final Screen Style */
-        .celebrate {
-            color: #ff9a9e;
-            font-size: 2rem !important;
-            font-weight: bold;
-        }
+        #audio-toggle { position: fixed; top: 20px; left: 20px; font-size: 24px; cursor: pointer; z-index: 100; }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <div id="image-container">
-        <img id="scene-img" src="" alt="Story Moment">
+<div id="audio-toggle" onclick="toggleMusic()">🔇</div>
+<audio id="bg-music" loop><source src="music.mp3" type="audio/mpeg"></audio>
+
+<div id="main-stage">
+    <div id="game-card" class="animate__animated animate__fadeInUp">
+        <div class="img-wrap">
+            <img id="scene-img" src="" alt="scene">
+        </div>
+        <div id="story-text"></div>
+        <div id="choices"></div>
     </div>
-    <div id="story-text">Loading story...</div>
-    <div id="choices" class="button-stack"></div>
 </div>
 
 <script>
-    /* DIRECTIONS:
-       1. Change the "text" to your story.
-       2. Change "img" to your photo filenames (e.g., "funny.jpg").
-       3. "next" must match the name of another scene.
-       4. If "options" is empty [], confetti will fire!
-    */
+    let isMusic = false;
+    const music = document.getElementById('bg-music');
+    
+    function toggleMusic() {
+        isMusic ? music.pause() : music.play();
+        isMusic = !isMusic;
+        document.getElementById('audio-toggle').innerText = isMusic ? "🔊" : "🔇";
+    }
 
     const scenes = {
         "start": {
-            text: "It's 9:00 AM on your birthday. The room is quiet. What's the plan?",
-            img: "https://via.placeholder.com/400x250?text=Morning+Scene",
+            text: "The story begins... Two lives, one birthday. Are you ready for the journey of a lifetime?",
+            img: "assets/img1.jpg",
+            options: [{ text: "START THE ADVENTURE", next: "s1" }]
+        },
+        "s1": {
+            text: "[Your Story Part 1]: Describe a funny memory or setting here.",
+            img: "assets/img2.jpg",
             options: [
-                { text: "Wake up your twin with a prank", next: "prank_scene" },
-                { text: "Check your phone for messages", next: "phone_scene" }
+                { text: "Go Left (The Funny Path)", next: "s2" },
+                { text: "Go Right (The Emotional Path)", next: "s2" }
             ]
         },
-        "prank_scene": {
-            text: "You went for the classic ice-water prank. Twin B is screaming. Mission accomplished.",
-            img: "https://via.placeholder.com/400x250?text=Chaos",
-            options: [
-                { text: "Laugh and run", next: "finale" },
-                { text: "Apologize (Lame!)", next: "phone_scene" }
-            ]
-        },
-        "phone_scene": {
-            text: "You have 50 notifications, mostly from [Your Name] sending memes. One message stands out...",
-            img: "https://via.placeholder.com/400x250?text=Notifications",
-            options: [
-                { text: "Read the secret message", next: "finale" }
-            ]
+        // ... PASTE ADDITIONAL SCENES (s2 through s19) HERE ...
+        "s20": {
+            text: "You've reached the final destination. The bond of twins is unbreakable. Ready?",
+            img: "assets/img20.jpg",
+            options: [{ text: "OPEN THE FINAL GIFT", next: "finale" }]
         },
         "finale": {
-            text: "HAPPY BIRTHDAY! You two are a nightmare to handle, but I love you both. Best twins ever! 🎂",
-            img: "https://via.placeholder.com/400x250?text=Happy+Birthday!",
-            options: [] // Leave empty to trigger confetti
+            text: "HAPPY BIRTHDAY! ❤️ You guys aren't just twins, you're my best friends.",
+            img: "assets/finale.jpg",
+            options: []
         }
     };
 
-    function renderScene(sceneKey) {
-        const scene = scenes[sceneKey];
-        const textEl = document.getElementById('story-text');
-        const imgEl = document.getElementById('scene-img');
-        const choicesEl = document.getElementById('choices');
+    function render(key) {
+        const card = document.getElementById('game-card');
+        const s = scenes[key];
+        
+        // Add fade-out animation
+        card.classList.remove('animate__fadeInUp');
+        card.classList.add('animate__fadeOutDown');
 
-        // Update Text and Image
-        textEl.innerText = scene.text;
-        imgEl.src = scene.img;
+        setTimeout(() => {
+            document.getElementById('story-text').innerText = s.text;
+            document.getElementById('scene-img').src = s.img;
+            
+            const choiceContainer = document.getElementById('choices');
+            choiceContainer.innerHTML = '';
 
-        // Clear Buttons
-        choicesEl.innerHTML = '';
+            if (s.options.length === 0) {
+                fireConfetti();
+            } else {
+                s.options.forEach(o => {
+                    const b = document.createElement('button');
+                    b.className = 'btn';
+                    b.innerText = o.text;
+                    b.onclick = () => render(o.next);
+                    choiceContainer.appendChild(b);
+                });
+            }
 
-        // Check if it's the end
-        if (scene.options.length === 0) {
-            textEl.classList.add('celebrate');
-            fireConfetti();
-            return;
-        }
-
-        // Create Buttons
-        scene.options.forEach(option => {
-            const btn = document.createElement('button');
-            btn.className = 'choice-btn';
-            btn.innerText = option.text;
-            btn.onclick = () => renderScene(option.next);
-            choicesEl.appendChild(btn);
-        });
+            // Bring the card back up
+            card.classList.remove('animate__fadeOutDown');
+            card.classList.add('animate__fadeInUp');
+        }, 500);
     }
 
     function fireConfetti() {
-        confetti({
-            particleCount: 150,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors: ['#ff4d6d', '#ffffff', '#ff9a9e']
-        });
+        const count = 200, defaults = { origin: { y: 0.7 } };
+        function fire(particleRatio, opts) {
+            confetti(Object.assign({}, defaults, opts, { particleCount: Math.floor(count * particleRatio) }));
+        }
+        fire(0.25, { spread: 26, startVelocity: 55 });
+        fire(0.2, { spread: 60 });
+        fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
     }
 
-    // Start the game
-    renderScene("start");
+    render("start");
 </script>
-
 </body>
 </html>
